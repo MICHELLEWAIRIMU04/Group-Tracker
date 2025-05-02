@@ -9,9 +9,7 @@ class Contribution(db.Model):
     description = db.Column(db.Text)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Define relationships with backref to make cascading deletions work properly
-    # The backref to user is already defined in the User model as 'contributions'
-    # We define the relationship to activity here
+   
     activity = db.relationship('Activity', backref='contributions')
     
     def to_dict(self):

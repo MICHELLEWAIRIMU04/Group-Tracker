@@ -7,7 +7,7 @@ class Activity(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    contributions = db.relationship('Contribution', backref='activity', lazy=True)
+
     
     def to_dict(self):
         return {

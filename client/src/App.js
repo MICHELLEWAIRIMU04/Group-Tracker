@@ -4,6 +4,8 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
+import Home from './pages/Home';
+import About from './pages/About';
 import Dashboard from './pages/Dashboard';
 import MembersList from './pages/MembersList';
 import MemberDetails from './pages/MemberDetails';
@@ -35,7 +37,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// App Layout component
+// App Layout component (used for protected routes with sidebar)
 const AppLayout = ({ children }) => {
   return (
     <div className="app-container">
@@ -53,21 +55,45 @@ const AppLayout = ({ children }) => {
   );
 };
 
+// Public Layout component (used for public pages without sidebar)
+const PublicLayout = ({ children }) => {
+  return (
+    <div className="app-container">
+      <Header />
+      <div className="main-content">
+        <div style={{ width: '100%' }}>
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Public routes */}
+          <Route path="/" element={
+            <PublicLayout>
+              <Home />
+            </PublicLayout>
+          } />
+          
+          <Route path="/about" element={
+            <PublicLayout>
+              <About />
+            </PublicLayout>
+          } />
+          
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Navigate to="/dashboard" />
-              </ProtectedRoute>
-            }
-          />
+          
+          {/* Protected routes */}
           <Route
             path="/dashboard"
             element={
@@ -118,6 +144,9 @@ function App() {
               </ProtectedRoute>
             }
           />
+          
+          {/* Redirect unknown routes to home */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
     </AuthProvider>
