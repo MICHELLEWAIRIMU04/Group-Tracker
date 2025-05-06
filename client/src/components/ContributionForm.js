@@ -1,154 +1,160 @@
 import React, { useState, useEffect } from 'react';
-import { getActivities, getMembers } from '../api';
 
-const ContributionForm = ({ onSubmit, onCancel, initialData = {}, fixedUserId = null }) => {
-  const [amount, setAmount] = useState(initialData.amount || '');
-  const [description, setDescription] = useState(initialData.description || '');
-  const [activityId, setActivityId] = useState(initialData.activity_id || '');
-  const [userId, setUserId] = useState(initialData.user_id || fixedUserId || '');
+
+const ContributionForm = ({ 
+  onSubmit, 
+  onCancel, 
+  initialData = null, 
+  fixedUserId = null,
+  groupId = null
+}) => {
+  const [formData, setFormData] = useState({
+    user_id: fixedUserId || '',
+    activity_id: '',
+    contribution_type: 'money',
+    amount: '',
+    currency: 'USD',
+    description: ''
+  });
   
+  const [users, setUsers] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [formLoading, setFormLoading] = useState(true);
   const [error, setError] = useState('');
   
+  // Currency options
+  const currencies = [
+    { code: 'USD', symbol: '$', name: 'US Dollar' },
+    { code: 'EUR', symbol: '€', name: 'Euro' },
+    { code: 'GBP', symbol: '£', name: 'British Pound' },
+    { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+    { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+    { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+    { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling' },
+    { code: 'NGN', symbol: '₦', name: 'Nigerian Naira' },
+    { code: 'ZAR', symbol: 'R', name: 'South African Rand' }
+  ];
+  
   useEffect(() => {
-    const fetchFormData = async () => {
+    // If initialData is provided, initialize form with it
+    if (initialData) {
+      setFormData({
+        user_id: initialData.user_id || '',
+        activity_id: initialData.activity_id || '',
+        contribution_type: initialData.contribution_type || 'money',
+        amount: initialData.amount || '',
+        currency: initialData.currency || 'USD',
+        description: initialData.description || ''
+      });
+    }
+    
+    // Load users and activities
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        const [activitiesData, membersData] = await Promise.all([
-          getActivities(),
-          fixedUserId ? null : getMembers() // Only fetch members if needed
-        ]);
+        // Fetch users
+        const response = await fetch('/api/members', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
         
-        setActivities(activitiesData);
-        if (membersData) {
-          setMembers(membersData);
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(data);
         }
         
-        // Set default activity if none selected and options available
-        if (!activityId && activitiesData.length > 0) {
-          setActivityId(activitiesData[0].id);
+        // Fetch activities for the specific group
+        let endpoint = '/api/activities';
+        if (groupId) {
+          endpoint = `/api/group/${groupId}/activities`;
         }
         
-        // Set default user if none selected and options available
-        if (!fixedUserId && !userId && membersData && membersData.length > 0) {
-          setUserId(membersData[0].id);
+        const activitiesResponse = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (activitiesResponse.ok) {
+          const activitiesData = await activitiesResponse.json();
+          setActivities(activitiesData);
         }
+        
       } catch (err) {
         setError('Failed to load form data');
         console.error(err);
       } finally {
-        setFormLoading(false);
+        setLoading(false);
       }
     };
     
-    fetchFormData();
-  }, [fixedUserId, activityId, userId]);
+    fetchData();
+  }, [initialData, groupId]);
   
-  // Form validation
-  const validateForm = () => {
-    if (!amount || !activityId || (!fixedUserId && !userId)) {
-      setError('Please fill in all required fields');
-      return false;
-    }
-    
-    if (isNaN(amount) || parseFloat(amount) <= 0) {
-      setError('Please enter a valid positive amount');
-      return false;
-    }
-    
-    return true;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
   };
   
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
     
-    if (!validateForm()) {
-      return;
+    // Convert amount to a number
+    const submissionData = {
+      ...formData,
+      amount: parseFloat(formData.amount)
+    };
+    
+    // If it's editing an existing contribution, include the ID
+    if (initialData && initialData.id) {
+      submissionData.id = initialData.id;
     }
     
-    setLoading(true);
-    
-    try {
-      const contributionData = {
-        amount: parseFloat(amount),
-        description,
-        activity_id: parseInt(activityId),
-        user_id: parseInt(fixedUserId || userId),
-      };
-      
-      if (initialData.id) {
-        contributionData.id = initialData.id;
-      }
-      
-      await onSubmit(contributionData);
-    } catch (err) {
-      setError('Failed to save contribution');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    onSubmit(submissionData);
   };
   
-  if (formLoading) {
+  if (loading) {
     return <div className="loading-state">Loading form data...</div>;
   }
   
-  if (activities.length === 0) {
-    return (
-      <div className="form-error">
-        <p>No activities available. Please create activities first.</p>
-        <div className="form-actions">
-          <button 
-            type="button" 
-            className="cancel-button"
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
   return (
-    <form onSubmit={handleSubmit} className="data-form">
+    <form onSubmit={handleSubmit}>
       {error && <div className="error-message">{error}</div>}
       
       {!fixedUserId && (
         <div className="form-group">
-          <label htmlFor="user">Member*</label>
+          <label htmlFor="user_id">Member</label>
           <select
-            id="user"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            disabled={loading || members.length === 0}
+            id="user_id"
+            name="user_id"
+            value={formData.user_id}
+            onChange={handleChange}
             required
           >
-            {members.length === 0 ? (
-              <option value="">No members available</option>
-            ) : (
-              members.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.username}
-                </option>
-              ))
-            )}
+            <option value="">Select a member</option>
+            {users.map(user => (
+              <option key={user.id} value={user.id}>
+                {user.username}
+              </option>
+            ))}
           </select>
         </div>
       )}
       
       <div className="form-group">
-        <label htmlFor="activity">Activity*</label>
+        <label htmlFor="activity_id">Activity</label>
         <select
-          id="activity"
-          value={activityId}
-          onChange={(e) => setActivityId(e.target.value)}
-          disabled={loading}
+          id="activity_id"
+          name="activity_id"
+          value={formData.activity_id}
+          onChange={handleChange}
           required
         >
+          <option value="">Select an activity</option>
           {activities.map(activity => (
             <option key={activity.id} value={activity.id}>
               {activity.name}
@@ -158,47 +164,86 @@ const ContributionForm = ({ onSubmit, onCancel, initialData = {}, fixedUserId = 
       </div>
       
       <div className="form-group">
-        <label htmlFor="amount">Amount*</label>
-        <input
-          id="amount"
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter amount"
-          disabled={loading}
+        <label htmlFor="contribution_type">Contribution Type</label>
+        <select
+          id="contribution_type"
+          name="contribution_type"
+          value={formData.contribution_type}
+          onChange={handleChange}
           required
-        />
+        >
+          <option value="money">Money</option>
+          <option value="time">Time</option>
+        </select>
       </div>
       
       <div className="form-group">
-        <label htmlFor="description">Description</label>
+        <label htmlFor="amount">
+          {formData.contribution_type === 'money' ? 'Amount' : 'Time (minutes)'}
+        </label>
+        <input
+          type="number"
+          id="amount"
+          name="amount"
+          value={formData.amount}
+          onChange={handleChange}
+          placeholder={formData.contribution_type === 'money' ? 'Enter amount' : 'Enter time in minutes'}
+          min="0"
+          step={formData.contribution_type === 'money' ? '0.01' : '1'}
+          required
+        />
+        
+        {formData.contribution_type === 'time' && (
+          <div className="helper-text">
+            Example: 90 minutes = 1 hour and 30 minutes
+          </div>
+        )}
+      </div>
+      
+      {formData.contribution_type === 'money' && (
+        <div className="form-group">
+          <label htmlFor="currency">Currency</label>
+          <select
+            id="currency"
+            name="currency"
+            value={formData.currency}
+            onChange={handleChange}
+            required
+          >
+            {currencies.map(currency => (
+              <option key={currency.code} value={currency.code}>
+                {currency.code} - {currency.name} ({currency.symbol})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      
+      <div className="form-group">
+        <label htmlFor="description">Description (Optional)</label>
         <textarea
           id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter description (optional)"
-          disabled={loading}
-          rows={3}
-        />
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          placeholder="Enter a brief description"
+          rows="3"
+        ></textarea>
       </div>
       
       <div className="form-actions">
-        <button 
-          type="button" 
+        <button
+          type="button"
           className="cancel-button"
           onClick={onCancel}
-          disabled={loading}
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="submit-button"
-          disabled={loading}
         >
-          {loading ? 'Saving...' : initialData.id ? 'Update Contribution' : 'Add Contribution'}
+          {initialData ? 'Update' : 'Add'} Contribution
         </button>
       </div>
     </form>

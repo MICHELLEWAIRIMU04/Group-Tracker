@@ -7,7 +7,7 @@ const Footer = () => {
     <footer className="app-footer">
       <div className="footer-content">
         <p>
-          &copy; {currentYear} Project Tracker. All rights reserved.
+          &copy; {currentYear}Group Tracker. All rights reserved.
         </p>
       </div>
     </footer>

@@ -8,7 +8,7 @@ const Home = () => {
   return (
     <div className="home-container">
       <div className="hero-section">
-        <h1>Welcome to Project Tracker</h1>
+        <h1>Welcome to Group Tracker</h1>
         <p className="tagline">Track, Manage, Succeed</p>
         <p className="description">
           A comprehensive solution for tracking project activities and contributions.

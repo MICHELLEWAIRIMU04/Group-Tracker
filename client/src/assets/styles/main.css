@@ -14,7 +14,7 @@
   --text-color: #333333;
   --text-light: #7f8c8d;
   --border-color: #ddd;
-  --bg-color: #f9f9f9;
+  --bg-color: #f5f5f5; /* Changed to off-white color */
   --card-bg: white;
   
   /* Typography */
@@ -1456,4 +1456,152 @@ body {
     flex-direction: column;
     gap: 0.75rem;
   }
+}
+
+/* Dark Mode Variables */
+:root {
+  /* Light Mode (Default) */
+  --primary-color: #3498db;
+  --primary-dark: #2980b9;
+  --secondary-color: #2ecc71;
+  --secondary-dark: #27ae60;
+  --danger-color: #e74c3c;
+  --danger-dark: #c0392b;
+  --warning-color: #f39c12;
+  --success-color: #2ecc71;
+  --light-color: #ecf0f1;
+  --dark-color: #34495e;
+  --text-color: #333333;
+  --text-light: #7f8c8d;
+  --border-color: #ddd;
+  --bg-color: #f5f5f5; /* Off-white background */
+  --card-bg: white;
+}
+
+/* Activity Detail Styles */
+.activity-details-container {
+  padding-bottom: var(--space-xl);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.header-left h1 {
+  margin-bottom: 0;
+}
+
+.back-link, .back-button {
+  color: var(--text-color);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.back-link:hover, .back-button:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.info-card {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.activity-description {
+  margin-bottom: var(--space-lg);
+  line-height: 1.6;
+}
+
+.activity-totals {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-lg);
+  margin-top: var(--space-md);
+}
+
+.total-section {
+  background-color: var(--bg-color);
+  padding: var(--space-md);
+  border-radius: var(--border-radius);
+}
+
+.total-section h4 {
+  margin-bottom: var(--space-sm);
+  color: var(--primary-color);
+  font-size: var(--font-size-md);
+}
+
+.currency-totals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.currency-totals li {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.currency-code {
+  font-weight: 500;
+}
+
+.currency-amount {
+  font-weight: 700;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+  
+  .totals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+  --primary-color: #4fa3e0; /* Slightly lighter blue for dark mode */
+  --primary-dark: #2980b9;
+  --secondary-color: #2ecc71;
+  --secondary-dark: #27ae60;
+  --danger-color: #e74c3c;
+  --danger-dark: #c0392b;
+  --warning-color: #f39c12;
+  --success-color: #2ecc71;
+  --light-color: #2c3e50; /* Darker in dark mode */
+  --dark-color: #ecf0f1; /* Lighter in dark mode (inverted) */
+  --text-color: #f5f5f5; /* Light text for dark mode */
+  --text-light: #bdc3c7; /* Lighter gray for dark mode */
+  --border-color: #3d4852; /* Darker border for dark mode */
+  --bg-color: #1a202c; /* Dark background */
+  --card-bg: #2d3748; /* Dark card background */
+}
+
+/* Animation for theme transition */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.card, .form-container, .auth-card, .sidebar, .app-header, .dashboard-card, .feature-card, .info-card,
+.contributions-card, .contributions-table-container, .member-card, .activity-card {
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }

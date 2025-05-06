@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db
-# Fix the import to match your actual model filename and casing
 from models.Contribution import Contribution
 
 contributions_bp = Blueprint('contributions', __name__)
@@ -54,17 +53,33 @@ def create_contribution():
         if not data:
             return jsonify({'message': 'No data provided'}), 400
             
-        required_fields = ['user_id', 'activity_id', 'amount']
+        # Validate required fields
+        required_fields = ['user_id', 'activity_id', 'amount', 'contribution_type']
         for field in required_fields:
             if field not in data:
                 return jsonify({'message': f'{field} is required'}), 400
         
+        # Validate contribution type
+        valid_types = ['money', 'time']
+        if data['contribution_type'] not in valid_types:
+            return jsonify({'message': f'Invalid contribution type. Must be one of: {", ".join(valid_types)}'}), 400
+        
+        # Currency is required only for money contributions
+        if data['contribution_type'] == 'money' and 'currency' not in data:
+            return jsonify({'message': 'Currency is required for money contributions'}), 400
+        
+        # Create new contribution
         new_contribution = Contribution(
             user_id=data['user_id'],
             activity_id=data['activity_id'],
+            contribution_type=data['contribution_type'],
             amount=data['amount'],
             description=data.get('description', '')
         )
+        
+        # Set currency only for money contributions
+        if data['contribution_type'] == 'money':
+            new_contribution.currency = data['currency']
         
         db.session.add(new_contribution)
         db.session.commit()
@@ -102,11 +117,21 @@ def update_contribution(id):
         contribution = Contribution.query.get_or_404(id)
         data = request.get_json()
         
-        # Update fields
+        # Update fields if provided
         if 'amount' in data:
             contribution.amount = data['amount']
         if 'description' in data:
             contribution.description = data['description']
+        if 'contribution_type' in data:
+            # Validate contribution type
+            valid_types = ['money', 'time']
+            if data['contribution_type'] not in valid_types:
+                return jsonify({'message': f'Invalid contribution type. Must be one of: {", ".join(valid_types)}'}), 400
+            contribution.contribution_type = data['contribution_type']
+        
+        # Update currency only for money contributions
+        if contribution.contribution_type == 'money' and 'currency' in data:
+            contribution.currency = data['currency']
         
         db.session.commit()
         

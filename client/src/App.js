@@ -1,76 +1,32 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, AuthContext } from './context/AuthContext';
-import ErrorBoundary from './components/ErrorBoundary';
+import { AuthProvider } from './context/AuthContext';
 
-// Pages
-import Home from './pages/Home';
-import About from './pages/About';
-import Dashboard from './pages/Dashboard';
-import MembersList from './pages/MembersList';
-import MemberDetails from './pages/MemberDetails';
-import Activities from './pages/Activities';
-import Contributions from './pages/Contributions';
-import Login from './pages/Login';
-import Register from './pages/Register';
+// Import CSS
+import './assets/styles/main.css';
+import './assets/styles/GroupStyles.css';
 
-// Components
+// Import components
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
+import ThemeToggle from './components/ThemeToggle';
+import ProtectedRoute from './components/ProtectedRoute';
 
-// CSS
-import './assets/styles/main.css';
-
-// Protected Route component
-const ProtectedRoute = ({ children }) => {
-  const { currentUser, loading } = useContext(AuthContext);
-  
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
-  
-  if (!currentUser) {
-    return <Navigate to="/login" />;
-  }
-  
-  return children;
-};
-
-// App Layout component (used for protected routes with sidebar)
-const AppLayout = ({ children }) => {
-  return (
-    <div className="app-container">
-      <Header />
-      <div className="main-content">
-        <Sidebar />
-        <div className="content-area">
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </div>
-      </div>
-      <Footer />
-    </div>
-  );
-};
-
-// Public Layout component (used for public pages without sidebar)
-const PublicLayout = ({ children }) => {
-  return (
-    <div className="app-container">
-      <Header />
-      <div className="main-content">
-        <div style={{ width: '100%' }}>
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </div>
-      </div>
-      <Footer />
-    </div>
-  );
-};
+// Import pages
+import Home from './pages/Home';
+import About from './pages/About';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Activities from './pages/Activities';
+import ActivityDetail from './pages/ActivityDetail';
+import Contributions from './pages/Contributions';
+import MembersList from './pages/MembersList';
+import MemberDetails from './pages/MemberDetails';
+import Groups from './pages/Groups';
+import GroupDetail from './pages/GroupDetail';
+import GroupActivityDetail from './pages/GroupActivityDetail';
 
 function App() {
   return (
@@ -79,71 +35,179 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/" element={
-            <PublicLayout>
-              <Home />
-            </PublicLayout>
+            <>
+              <Header />
+              <main className="main-content">
+                <div style={{ width: '100%' }}>
+                  <Home />
+                </div>
+              </main>
+              <Footer />
+              <ThemeToggle />
+            </>
           } />
           
           <Route path="/about" element={
-            <PublicLayout>
-              <About />
-            </PublicLayout>
+            <>
+              <Header />
+              <main className="main-content">
+                <div style={{ width: '100%' }}>
+                  <About />
+                </div>
+              </main>
+              <Footer />
+              <ThemeToggle />
+            </>
           } />
           
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Protected routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/members"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MembersList />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/members/:id"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MemberDetails />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/activities"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Activities />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/contributions"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Contributions />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
+          {/* Protected routes with sidebar */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <Dashboard />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/activities" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <Activities />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/activities/:id" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <ActivityDetail />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/contributions" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <Contributions />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/members" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <MembersList />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/members/:id" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <MemberDetails />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          {/* Group routes */}
+          <Route path="/groups" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <Groups />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/groups/:id" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <GroupDetail />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/groups/:groupId/activities/:activityId" element={
+            <ProtectedRoute>
+              <div className="app-container">
+                <Header />
+                <div className="main-content">
+                  <Sidebar />
+                  <div className="content-area">
+                    <GroupActivityDetail />
+                  </div>
+                </div>
+                <Footer />
+                <ThemeToggle />
+              </div>
+            </ProtectedRoute>
+          } />
           
           {/* Redirect unknown routes to home */}
           <Route path="*" element={<Navigate to="/" />} />

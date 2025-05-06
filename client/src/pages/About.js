@@ -5,10 +5,10 @@ const About = () => {
   return (
     <div className="home-container">
       <div className="hero-section">
-        <h1>About Project Tracker</h1>
+        <h1>About Group Tracker</h1>
         <p className="tagline">Our Story and Mission</p>
         <p className="description">
-          Project Tracker was developed to provide a simple yet powerful solution for teams and organizations
+          Group Tracker was developed to provide a simple yet powerful solution for teams and organizations
           to track activities, members, and contributions. Our mission is to help you manage your projects more efficiently.
         </p>
       </div>

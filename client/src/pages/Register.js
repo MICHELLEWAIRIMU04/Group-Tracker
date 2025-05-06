@@ -90,7 +90,7 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>Project Tracker</h1>
+          <h1>Group Tracker</h1>
           <h2>Create a new account</h2>
         </div>
         

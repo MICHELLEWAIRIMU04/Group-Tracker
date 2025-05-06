@@ -24,7 +24,7 @@ const Header = () => {
     <header className="app-header">
       <div className="header-container">
         <div className="logo">
-          <Link to="/">Project Tracker</Link>
+          <Link to="/">Group Tracker</Link>
         </div>
 
         {/* Navigation Links */}

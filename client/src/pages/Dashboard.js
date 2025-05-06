@@ -59,7 +59,7 @@ const Dashboard = () => {
       
       <div className="welcome-message">
         <h2>Welcome, {currentUser?.username || 'User'}!</h2>
-        <p>Here's an overview of the current project activities and contributions.</p>
+        <p>Here's an overview of the current group activities and contributions.</p>
       </div>
       
       <div className="dashboard-grid">
