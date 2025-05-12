@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { 
+  getGroupById, 
+  getMembers, 
+  addGroupMember, 
+  removeGroupMember, 
+  createGroupActivity 
+} from '../api';
 
 const GroupDetail = () => {
   const { id } = useParams();
@@ -33,17 +40,10 @@ const GroupDetail = () => {
   const fetchGroupDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/groups/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      setError('');
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch group details');
-      }
-      
-      const data = await response.json();
+      // Use the API function instead of direct fetch
+      const data = await getGroupById(id);
       setGroup(data);
       
       // Check if current user is an admin
@@ -55,14 +55,13 @@ const GroupDetail = () => {
         setIsAdmin(true);
       }
       
-      setError('');
     } catch (err) {
-      setError('Failed to load group details');
-      console.error(err);
+      setError(err.message || 'Failed to load group details');
+      console.error('Error fetching group details:', err);
     } finally {
       setLoading(false);
     }
-  }, [id, currentUser.id]); // Include all dependencies
+  }, [id, currentUser.id]);
   
   // Now the useEffect uses the memoized fetchGroupDetails function
   useEffect(() => {
@@ -74,18 +73,8 @@ const GroupDetail = () => {
     setAddMemberError('');
     
     try {
-      // First, find the user ID by email
-      const usersResponse = await fetch('/api/members', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!usersResponse.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      
-      const users = await usersResponse.json();
+      // First, find the user ID by email using the API function
+      const users = await getMembers();
       const userToAdd = users.find(user => user.email === newMemberEmail);
       
       if (!userToAdd) {
@@ -93,23 +82,8 @@ const GroupDetail = () => {
         return;
       }
       
-      // Add the user to the group
-      const response = await fetch(`/api/groups/${id}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          user_id: userToAdd.id,
-          is_admin: newMemberRole === 'admin'
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to add member');
-      }
+      // Add the user to the group using the API function
+      await addGroupMember(id, userToAdd.id, newMemberRole === 'admin');
       
       // Refresh group details
       fetchGroupDetails();
@@ -118,7 +92,7 @@ const GroupDetail = () => {
       setNewMemberRole('member');
     } catch (err) {
       setAddMemberError(err.message || 'Something went wrong');
-      console.error(err);
+      console.error('Error adding member:', err);
     }
   };
   
@@ -127,50 +101,36 @@ const GroupDetail = () => {
     setAddActivityError('');
     
     try {
-      const response = await fetch(`/api/group/${id}/activities`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          name: newActivityName,
-          description: newActivityDescription
-        })
+      // Use the API function to create a group activity
+      const result = await createGroupActivity(id, {
+        name: newActivityName,
+        description: newActivityDescription
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create activity');
+      if (result.activity) {
+        // Refresh group details
+        fetchGroupDetails();
+        setShowAddActivityForm(false);
+        setNewActivityName('');
+        setNewActivityDescription('');
+        
+        // Switch to activities tab
+        setActiveTab('activities');
+      } else {
+        setAddActivityError(result.message || 'Failed to create activity');
       }
-      
-      // Refresh group details
-      fetchGroupDetails();
-      setShowAddActivityForm(false);
-      setNewActivityName('');
-      setNewActivityDescription('');
-      
-      // Switch to activities tab
-      setActiveTab('activities');
     } catch (err) {
       setAddActivityError(err.message || 'Something went wrong');
-      console.error(err);
+      console.error('Error creating activity:', err);
     }
   };
   
   const handleRemoveMember = async (userId) => {
     try {
-      const response = await fetch(`/api/groups/${id}/members/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      setError('');
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to remove member');
-      }
+      // Use the API function to remove member
+      await removeGroupMember(id, userId);
       
       // If removing current user, redirect to groups page
       if (parseInt(userId) === parseInt(currentUser.id)) {
@@ -183,7 +143,7 @@ const GroupDetail = () => {
       setConfirmRemoveMember(null);
     } catch (err) {
       setError(err.message || 'Failed to remove member');
-      console.error(err);
+      console.error('Error removing member:', err);
     }
   };
   
@@ -194,7 +154,7 @@ const GroupDetail = () => {
   if (!group) {
     return (
       <div className="error-state">
-        <p>Group not found or you don't have access</p>
+        <p>{error || 'Group not found or you don\'t have access'}</p>
         <Link to="/groups" className="back-link">Back to Groups</Link>
       </div>
     );
@@ -211,7 +171,7 @@ const GroupDetail = () => {
         </div>
         
         <div className="header-actions">
-          {isAdmin && (
+          {(isAdmin || parseInt(currentUser.id) === parseInt(group.owner_id)) && (
             <button 
               className="leave-button"
               onClick={() => setConfirmRemoveMember({ id: currentUser.id, username: currentUser.username })}
@@ -328,7 +288,7 @@ const GroupDetail = () => {
               )}
               
               <div className="members-list">
-                {group.members.map(member => (
+                {group.members && group.members.map(member => (
                   <div key={member.id} className="member-item">
                     <div className="member-info">
                       <div className="member-name">
@@ -436,10 +396,10 @@ const GroupDetail = () => {
                       <div className="activity-stats">
                         <div className="stat-item">
                           <span className="stat-label">Contributors:</span>
-                          <span className="stat-value">{activity.contributor_count}</span>
+                          <span className="stat-value">{activity.contributor_count || 0}</span>
                         </div>
                         
-                        {Object.keys(activity.totals?.money || {}).length > 0 && (
+                        {activity.totals && Object.keys(activity.totals.money || {}).length > 0 && (
                           <div className="money-contributions">
                             <span className="stat-label">Money:</span>
                             <div className="currency-list">
@@ -452,7 +412,7 @@ const GroupDetail = () => {
                           </div>
                         )}
                         
-                        {activity.totals?.time?.minutes > 0 && (
+                        {activity.totals && activity.totals.time && activity.totals.time.minutes > 0 && (
                           <div className="stat-item">
                             <span className="stat-label">Time:</span>
                             <span className="stat-value">{activity.totals.time.formatted}</span>

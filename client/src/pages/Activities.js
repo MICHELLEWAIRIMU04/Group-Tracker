@@ -1,10 +1,18 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { getActivities, createActivity, deleteActivity } from '../api';
+import { 
+  getGroupActivities, 
+  createGroupActivity, 
+  deleteGroupActivity, 
+  getGroupActivityById,
+  getGroups
+} from '../api';
 import ActivityForm from '../components/ActivityForm';
 
 const Activities = () => {
   const [activities, setActivities] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -13,45 +21,85 @@ const Activities = () => {
   
   const { isAdmin } = useContext(AuthContext);
   
+  // First, fetch available groups
   useEffect(() => {
-    fetchActivities();
+    const fetchGroups = async () => {
+      try {
+        const groupsData = await getGroups();
+        setGroups(groupsData);
+        
+        // Select the first group by default if available
+        if (groupsData && groupsData.length > 0) {
+          setSelectedGroupId(groupsData[0].id);
+        }
+      } catch (err) {
+        setError('Failed to load groups');
+        console.error('Error fetching groups:', err);
+      }
+    };
+    
+    fetchGroups();
   }, []);
   
-  const fetchActivities = async () => {
+  // Then, fetch activities for the selected group
+  useEffect(() => {
+    if (selectedGroupId) {
+      fetchActivities(selectedGroupId);
+    }
+  }, [selectedGroupId]);
+  
+  const fetchActivities = async (groupId) => {
     try {
+      if (!groupId) {
+        setError('Please select a group first');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
-      const data = await getActivities();
+      setError('');
+      
+      // Use the API function to get activities for the selected group
+      const data = await getGroupActivities(groupId);
       setActivities(data);
       
       // Calculate statistics for each activity
       const stats = {};
+      
       // Using Promise.all to handle multiple fetches in parallel
-      await Promise.all(data.map(async (activity) => {
-        const activityDetail = await fetch(`http://127.0.0.1:5000/api/activities/${activity.id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        }).then(res => res.json());
-        
-        const totalContribution = activityDetail.contributions 
-          ? activityDetail.contributions.reduce((sum, contrib) => sum + contrib.amount, 0)
-          : 0;
-          
-        const contributorCount = activityDetail.contributions 
-          ? new Set(activityDetail.contributions.map(contrib => contrib.user_id)).size
-          : 0;
-        
-        stats[activity.id] = {
-          totalContribution,
-          contributorCount
-        };
-      }));
+      if (data && data.length > 0) {
+        await Promise.all(data.map(async (activity) => {
+          try {
+            // Use API function to get activity details
+            const activityDetail = await getGroupActivityById(groupId, activity.id);
+            
+            const totalContribution = activityDetail.contributions 
+              ? activityDetail.contributions.reduce((sum, contrib) => sum + contrib.amount, 0)
+              : 0;
+              
+            const contributorCount = activityDetail.contributions 
+              ? new Set(activityDetail.contributions.map(contrib => contrib.user_id)).size
+              : 0;
+            
+            stats[activity.id] = {
+              totalContribution,
+              contributorCount
+            };
+          } catch (err) {
+            console.error(`Error fetching details for activity ${activity.id}:`, err);
+            // Set default values if we couldn't get the details
+            stats[activity.id] = {
+              totalContribution: 0,
+              contributorCount: 0
+            };
+          }
+        }));
+      }
       
       setActivityStats(stats);
-      setError('');
     } catch (err) {
-      setError('Failed to load activities');
-      console.error(err);
+      setError(err.message || 'Failed to load activities');
+      console.error('Error fetching activities:', err);
     } finally {
       setLoading(false);
     }
@@ -59,8 +107,16 @@ const Activities = () => {
   
   const handleAddActivity = async (activityData) => {
     try {
-      const result = await createActivity(activityData);
-      if (result.activity) {
+      if (!selectedGroupId) {
+        setError('Please select a group first');
+        return;
+      }
+      
+      setError('');
+      const result = await createGroupActivity(selectedGroupId, activityData);
+      
+      if (result && result.activity) {
+        // Add the new activity to the list
         setActivities([...activities, result.activity]);
         setShowAddForm(false);
         
@@ -73,18 +129,26 @@ const Activities = () => {
           }
         });
       } else {
-        setError(result.message || 'Failed to add activity');
+        setError(result?.message || 'Failed to add activity');
       }
     } catch (err) {
-      setError('Something went wrong');
-      console.error(err);
+      setError(err.message || 'Something went wrong');
+      console.error('Error adding activity:', err);
     }
   };
   
   const handleDeleteActivity = async (id) => {
     try {
-      const result = await deleteActivity(id);
-      if (result.message === 'Activity deleted successfully') {
+      if (!selectedGroupId) {
+        setError('Please select a group first');
+        return;
+      }
+      
+      setError('');
+      const result = await deleteGroupActivity(selectedGroupId, id);
+      
+      if (result && result.message === 'Activity deleted successfully') {
+        // Remove the deleted activity from the list
         setActivities(activities.filter(activity => activity.id !== id));
         setConfirmDelete(null);
         
@@ -93,38 +157,64 @@ const Activities = () => {
         delete newStats[id];
         setActivityStats(newStats);
       } else {
-        setError(result.message || 'Failed to delete activity');
+        setError(result?.message || 'Failed to delete activity');
       }
     } catch (err) {
-      setError('Something went wrong');
-      console.error(err);
+      setError(err.message || 'Something went wrong');
+      console.error('Error deleting activity:', err);
     }
   };
   
-  if (loading) {
-    return <div className="loading-state">Loading activities...</div>;
+  const handleGroupChange = (e) => {
+    setSelectedGroupId(parseInt(e.target.value));
+  };
+  
+  if (loading && !selectedGroupId) {
+    return <div className="loading-state">Loading groups...</div>;
+  }
+  
+  if (groups.length === 0) {
+    return (
+      <div className="error-state">
+        <p>You need to create a group first before you can manage activities.</p>
+        <a href="/groups" className="button">Go to Groups</a>
+      </div>
+    );
   }
   
   return (
     <div className="activities-container">
       <div className="page-header">
         <h1>Activities</h1>
-        {isAdmin && (
-          <button 
-            className="add-button"
-            onClick={() => setShowAddForm(true)}
+        <div className="header-controls">
+          <select 
+            value={selectedGroupId || ''} 
+            onChange={handleGroupChange}
+            className="group-selector"
           >
-            Add Activity
-          </button>
-        )}
+            <option value="">Select a Group</option>
+            {groups.map(group => (
+              <option key={group.id} value={group.id}>{group.name}</option>
+            ))}
+          </select>
+          
+          {isAdmin && selectedGroupId && (
+            <button 
+              className="add-button"
+              onClick={() => setShowAddForm(true)}
+            >
+              Add Activity
+            </button>
+          )}
+        </div>
       </div>
       
       {error && <div className="error-message">{error}</div>}
       
-      {showAddForm && (
+      {showAddForm && selectedGroupId && (
         <div className="form-modal">
           <div className="form-container">
-            <h2>Add New Activity</h2>
+            <h2>Add New Activity to {groups.find(g => g.id === selectedGroupId)?.name}</h2>
             <ActivityForm 
               onSubmit={handleAddActivity}
               onCancel={() => setShowAddForm(false)}
@@ -163,7 +253,11 @@ const Activities = () => {
         </div>
       )}
       
-      {activities.length > 0 ? (
+      {selectedGroupId && loading && (
+        <div className="loading-state">Loading activities...</div>
+      )}
+      
+      {selectedGroupId && !loading && activities && activities.length > 0 ? (
         <div className="activities-grid">
           {activities.map(activity => (
             <div key={activity.id} className="activity-card">
@@ -205,9 +299,9 @@ const Activities = () => {
             </div>
           ))}
         </div>
-      ) : (
+      ) : selectedGroupId && !loading ? (
         <div className="empty-state">
-          <p>No activities found.</p>
+          <p>No activities found in this group.</p>
           {isAdmin && (
             <button 
               className="add-button"
@@ -217,7 +311,7 @@ const Activities = () => {
             </button>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

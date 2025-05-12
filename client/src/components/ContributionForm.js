@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+import { getMembers, getGroupActivities } from '../api';
 
 const ContributionForm = ({ 
   onSubmit, 
@@ -51,39 +51,27 @@ const ContributionForm = ({
     // Load users and activities
     const fetchData = async () => {
       setLoading(true);
+      setError('');
+      
       try {
-        // Fetch users
-        const response = await fetch('/api/members', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setUsers(data);
-        }
+        // Fetch users using the API function
+        const userData = await getMembers();
+        setUsers(userData);
         
         // Fetch activities for the specific group
-        let endpoint = '/api/activities';
         if (groupId) {
-          endpoint = `/api/group/${groupId}/activities`;
-        }
-        
-        const activitiesResponse = await fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (activitiesResponse.ok) {
-          const activitiesData = await activitiesResponse.json();
+          // Use the API function to get activities for the group
+          const activitiesData = await getGroupActivities(groupId);
           setActivities(activitiesData);
+        } else {
+          // If no groupId is provided, we can't fetch activities
+          // This is because all activities need a group ID in your API
+          setError('Group ID is required to fetch activities');
+          setActivities([]);
         }
-        
       } catch (err) {
-        setError('Failed to load form data');
-        console.error(err);
+        setError('Failed to load form data: ' + (err.message || 'Unknown error'));
+        console.error('Error loading form data:', err);
       } finally {
         setLoading(false);
       }
@@ -112,6 +100,11 @@ const ContributionForm = ({
     // If it's editing an existing contribution, include the ID
     if (initialData && initialData.id) {
       submissionData.id = initialData.id;
+    }
+    
+    // Additionally pass the groupId back if it was provided
+    if (groupId) {
+      submissionData.group_id = groupId;
     }
     
     onSubmit(submissionData);
@@ -161,6 +154,7 @@ const ContributionForm = ({
             </option>
           ))}
         </select>
+        {!groupId && <div className="helper-text error-text">A group must be selected to load activities</div>}
       </div>
       
       <div className="form-group">
@@ -242,6 +236,7 @@ const ContributionForm = ({
         <button
           type="submit"
           className="submit-button"
+          disabled={!groupId || activities.length === 0}
         >
           {initialData ? 'Update' : 'Add'} Contribution
         </button>

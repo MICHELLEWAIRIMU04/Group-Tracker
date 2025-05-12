@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import GroupForm from '../components/GroupForm';
+import { getGroups, createGroup, deleteGroup } from '../api';
 
 const Groups = () => {
   const [groups, setGroups] = useState([]);
@@ -19,22 +20,15 @@ const Groups = () => {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/groups', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch groups');
-      }
-      
-      const data = await response.json();
-      setGroups(data);
       setError('');
+      
+      // Use the API function instead of direct fetch
+      const data = await getGroups();
+      setGroups(data);
+      
     } catch (err) {
-      setError('Failed to load groups');
-      console.error(err);
+      setError(err.message || 'Failed to load groups');
+      console.error('Error fetching groups:', err);
     } finally {
       setLoading(false);
     }
@@ -42,44 +36,29 @@ const Groups = () => {
   
   const handleAddGroup = async (groupData) => {
     try {
-      const response = await fetch('/api/groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(groupData)
-      });
+      setError('');
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create group');
+      // Use the createGroup API function
+      const result = await createGroup(groupData);
+      
+      if (result.group) {
+        setGroups([...groups, result.group]);
+        setShowAddForm(false);
+      } else {
+        setError(result.message || 'Failed to create group');
       }
-      
-      const result = await response.json();
-      setGroups([...groups, result.group]);
-      setShowAddForm(false);
     } catch (err) {
       setError(err.message || 'Something went wrong');
-      console.error(err);
+      console.error('Error creating group:', err);
     }
   };
   
   const handleDeleteGroup = async (id) => {
     try {
-      const response = await fetch(`/api/groups/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      setError('');
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete group');
-      }
-      
-      const result = await response.json();
+      // Use the deleteGroup API function
+      const result = await deleteGroup(id);
       
       if (result.message === 'Group deleted successfully') {
         setGroups(groups.filter(group => group.id !== id));
@@ -89,7 +68,7 @@ const Groups = () => {
       }
     } catch (err) {
       setError(err.message || 'Something went wrong');
-      console.error(err);
+      console.error('Error deleting group:', err);
     }
   };
   
@@ -149,7 +128,7 @@ const Groups = () => {
         </div>
       )}
       
-      {groups.length > 0 ? (
+      {groups && groups.length > 0 ? (
         <div className="groups-grid">
           {groups.map(group => (
             <div key={group.id} className="group-card">

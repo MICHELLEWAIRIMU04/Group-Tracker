@@ -116,10 +116,15 @@ export const deleteMember = async (id) => {
   }
 };
 
-// Activities API
-export const getActivities = async () => {
+// Activities API - UPDATED to use group activities endpoints
+export const getActivities = async (groupId) => {
   try {
-    const response = await fetch(`${API_URL}/activities`, {
+    // For activities, we need a group ID
+    if (!groupId) {
+      throw new Error('Group ID is required to fetch activities');
+    }
+    
+    const response = await fetch(`${API_URL}/group/${groupId}/activities`, {
       headers: getAuthHeaders(),
     });
     
@@ -136,13 +141,40 @@ export const getActivities = async () => {
   }
 };
 
-export const createActivity = async (activityData) => {
+export const getActivityById = async (groupId, activityId) => {
   try {
-    console.log('Creating activity with data:', activityData);
+    if (!groupId || !activityId) {
+      throw new Error('Both Group ID and Activity ID are required');
+    }
+    
+    const response = await fetch(`${API_URL}/group/${groupId}/activities/${activityId}`, {
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`Get activity ${activityId} failed:`, response.status, errorData);
+      throw new Error(errorData.message || `Failed to get activity: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Get activity ${activityId} error:`, error);
+    throw error;
+  }
+};
+
+export const createActivity = async (groupId, activityData) => {
+  try {
+    if (!groupId) {
+      throw new Error('Group ID is required to create an activity');
+    }
+    
+    console.log(`Creating activity in group ${groupId} with data:`, activityData);
     const headers = getAuthHeaders();
     console.log('Request headers:', headers);
     
-    const response = await fetch(`${API_URL}/activities`, {
+    const response = await fetch(`${API_URL}/group/${groupId}/activities`, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(activityData),
@@ -171,9 +203,13 @@ export const createActivity = async (activityData) => {
   }
 };
 
-export const deleteActivity = async (id) => {
+export const deleteActivity = async (groupId, activityId) => {
   try {
-    const response = await fetch(`${API_URL}/activities/${id}`, {
+    if (!groupId || !activityId) {
+      throw new Error('Both Group ID and Activity ID are required');
+    }
+    
+    const response = await fetch(`${API_URL}/group/${groupId}/activities/${activityId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -376,3 +412,206 @@ export const getDashboardData = async () => {
       };
     }
   };
+
+
+// Groups API
+export const getGroups = async () => {
+  try {
+    const response = await fetch(`${API_URL}/groups`, {
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Get groups failed:', response.status, errorData);
+      throw new Error(errorData.message || `Failed to get groups: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Get groups error:', error);
+    throw error;
+  }
+};
+
+export const getGroupById = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/groups/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`Get group ${id} failed:`, response.status, errorData);
+      throw new Error(errorData.message || `Failed to get group: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Get group ${id} error:`, error);
+    throw error;
+  }
+};
+
+export const createGroup = async (groupData) => {
+  try {
+    const response = await fetch(`${API_URL}/groups`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(groupData),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Create group failed:', response.status, errorData);
+      throw new Error(errorData.message || `Create group failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Create group error:', error);
+    throw error;
+  }
+};
+
+export const deleteGroup = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/groups/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`Delete group ${id} failed:`, response.status, errorData);
+      throw new Error(errorData.message || `Delete group failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Delete group ${id} error:`, error);
+    throw error;
+  }
+};
+
+// Group Members API
+export const addGroupMember = async (groupId, userId, isAdmin = false) => {
+  try {
+    const response = await fetch(`${API_URL}/groups/${groupId}/members`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ user_id: userId, is_admin: isAdmin }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Add group member failed:', response.status, errorData);
+      throw new Error(errorData.message || `Add member failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Add group member error:', error);
+    throw error;
+  }
+};
+
+export const removeGroupMember = async (groupId, userId) => {
+  try {
+    const response = await fetch(`${API_URL}/groups/${groupId}/members/${userId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Remove group member failed:', response.status, errorData);
+      throw new Error(errorData.message || `Remove member failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Remove group member error:', error);
+    throw error;
+  }
+};
+
+// Group Activities API - these are already correct based on your routes
+export const getGroupActivities = async (groupId) => {
+  try {
+    const response = await fetch(`${API_URL}/group/${groupId}/activities`, {
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Get group activities failed:', response.status, errorData);
+      throw new Error(errorData.message || `Failed to get activities: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Get group activities error:', error);
+    throw error;
+  }
+};
+
+export const getGroupActivityById = async (groupId, activityId) => {
+  try {
+    const response = await fetch(`${API_URL}/group/${groupId}/activities/${activityId}`, {
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`Get group activity ${activityId} failed:`, response.status, errorData);
+      throw new Error(errorData.message || `Failed to get activity: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Get group activity ${activityId} error:`, error);
+    throw error;
+  }
+};
+
+export const createGroupActivity = async (groupId, activityData) => {
+  try {
+    const response = await fetch(`${API_URL}/group/${groupId}/activities`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(activityData),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Create group activity failed:', response.status, errorData);
+      throw new Error(errorData.message || `Create activity failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Create group activity error:', error);
+    throw error;
+  }
+};
+
+export const deleteGroupActivity = async (groupId, activityId) => {
+  try {
+    const response = await fetch(`${API_URL}/group/${groupId}/activities/${activityId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`Delete group activity ${activityId} failed:`, response.status, errorData);
+      throw new Error(errorData.message || `Delete activity failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Delete group activity ${activityId} error:`, error);
+    throw error;
+  }
+};
