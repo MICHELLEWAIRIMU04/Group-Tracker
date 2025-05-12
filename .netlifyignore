@@ -1,0 +1,5 @@
+# Ignore server files
+/server/
+Pipfile
+Pipfile.lock
+*.py
