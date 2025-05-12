@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db
 from models.Contribution import Contribution
+from models.Activity import Activity
+from models.Group import Group, group_members
+from models.User import User
 
 contributions_bp = Blueprint('contributions', __name__)
 
@@ -9,7 +12,30 @@ contributions_bp = Blueprint('contributions', __name__)
 @jwt_required()
 def get_contributions():
     try:
-        contributions = Contribution.query.all()
+        # Get current user ID
+        current_user_id = get_jwt_identity()
+        
+        # Find all groups the user is a member of
+        user_groups = db.session.query(group_members).filter(
+            group_members.c.user_id == current_user_id
+        ).all()
+        
+        group_ids = [g.group_id for g in user_groups]
+        
+        # Find activities in those groups
+        activities = Activity.query.filter(Activity.group_id.in_(group_ids)).all()
+        activity_ids = [activity.id for activity in activities]
+        
+        # Get contributions for those activities
+        if get_jwt().get('is_admin', False):
+            # Admins can see all contributions
+            contributions = Contribution.query.all()
+        else:
+            # Regular users can only see contributions in their groups
+            contributions = Contribution.query.filter(
+                Contribution.activity_id.in_(activity_ids)
+            ).all()
+        
         return jsonify([contribution.to_dict() for contribution in contributions])
     except Exception as e:
         print(f"Error in get_contributions: {str(e)}")
@@ -19,7 +45,28 @@ def get_contributions():
 @jwt_required()
 def get_contribution(id):
     try:
+        # Get current user ID
+        current_user_id = get_jwt_identity()
+        
+        # Get the contribution
         contribution = Contribution.query.get_or_404(id)
+        
+        # Get the activity and its group
+        activity = Activity.query.get_or_404(contribution.activity_id)
+        
+        # Check if user is a member of the group or an admin
+        is_admin = get_jwt().get('is_admin', False)
+        
+        if not is_admin:
+            # Check if user is a member of the group
+            is_member = db.session.query(group_members).filter(
+                group_members.c.user_id == current_user_id,
+                group_members.c.group_id == activity.group_id
+            ).first() is not None
+            
+            if not is_member:
+                return jsonify({'message': 'Access denied. You are not a member of this group'}), 403
+        
         return jsonify(contribution.to_dict())
     except Exception as e:
         print(f"Error in get_contribution: {str(e)}")
@@ -30,17 +77,15 @@ def get_contribution(id):
 def create_contribution():
     try:
         # Print debugging information
-        print("Current JWT identity:", get_jwt_identity())
+        current_user_id = get_jwt_identity()
+        print("Current JWT identity:", current_user_id)
         print("JWT claims:", get_jwt())
         
         # Get additional claims - this is a dictionary
         claims = get_jwt()
         
         # Check if the 'is_admin' claim exists
-        is_admin = False
-        if 'is_admin' in claims:
-            is_admin = claims['is_admin']
-        
+        is_admin = claims.get('is_admin', False)
         print(f"Is admin from JWT: {is_admin}")
             
         # Only allow admins to create contributions
@@ -67,6 +112,25 @@ def create_contribution():
         # Currency is required only for money contributions
         if data['contribution_type'] == 'money' and 'currency' not in data:
             return jsonify({'message': 'Currency is required for money contributions'}), 400
+        
+        # Check if the activity exists
+        activity = Activity.query.get(data['activity_id'])
+        if not activity:
+            return jsonify({'message': 'Activity not found'}), 404
+        
+        # Check if the user exists
+        user = User.query.get(data['user_id'])
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        # Check if the user is a member of the group associated with the activity
+        is_member = db.session.query(group_members).filter(
+            group_members.c.user_id == data['user_id'],
+            group_members.c.group_id == activity.group_id
+        ).first() is not None
+        
+        if not is_member:
+            return jsonify({'message': 'The user is not a member of the group associated with this activity'}), 400
         
         # Create new contribution
         new_contribution = Contribution(
@@ -96,19 +160,14 @@ def create_contribution():
 @jwt_required()
 def update_contribution(id):
     try:
-        # Print debugging information
-        print("Current JWT identity:", get_jwt_identity())
-        print("JWT claims:", get_jwt())
+        # Get current user ID
+        current_user_id = get_jwt_identity()
         
         # Get additional claims - this is a dictionary
         claims = get_jwt()
         
         # Check if the 'is_admin' claim exists
-        is_admin = False
-        if 'is_admin' in claims:
-            is_admin = claims['is_admin']
-        
-        print(f"Is admin from JWT: {is_admin}")
+        is_admin = claims.get('is_admin', False)
         
         # Only allow admins to update contributions
         if not is_admin:
@@ -117,7 +176,44 @@ def update_contribution(id):
         contribution = Contribution.query.get_or_404(id)
         data = request.get_json()
         
-        # Update fields if provided
+        # If changing activity_id, validate that the user is in the new activity's group
+        if 'activity_id' in data and data['activity_id'] != contribution.activity_id:
+            new_activity = Activity.query.get(data['activity_id'])
+            if not new_activity:
+                return jsonify({'message': 'Activity not found'}), 404
+                
+            # Check if the user is a member of the group associated with the new activity
+            is_member = db.session.query(group_members).filter(
+                group_members.c.user_id == contribution.user_id,
+                group_members.c.group_id == new_activity.group_id
+            ).first() is not None
+            
+            if not is_member:
+                return jsonify({'message': 'The user is not a member of the group associated with the new activity'}), 400
+                
+            contribution.activity_id = data['activity_id']
+        
+        # If changing user_id, validate that the new user is in the activity's group
+        if 'user_id' in data and data['user_id'] != contribution.user_id:
+            new_user = User.query.get(data['user_id'])
+            if not new_user:
+                return jsonify({'message': 'User not found'}), 404
+                
+            # Get the activity and its group
+            activity = Activity.query.get(contribution.activity_id)
+            
+            # Check if the new user is a member of the group
+            is_member = db.session.query(group_members).filter(
+                group_members.c.user_id == data['user_id'],
+                group_members.c.group_id == activity.group_id
+            ).first() is not None
+            
+            if not is_member:
+                return jsonify({'message': 'The new user is not a member of the group associated with this activity'}), 400
+                
+            contribution.user_id = data['user_id']
+        
+        # Update other fields if provided
         if 'amount' in data:
             contribution.amount = data['amount']
         if 'description' in data:
@@ -145,19 +241,11 @@ def update_contribution(id):
 @jwt_required()
 def delete_contribution(id):
     try:
-        # Print debugging information
-        print("Current JWT identity:", get_jwt_identity())
-        print("JWT claims:", get_jwt())
-        
         # Get additional claims - this is a dictionary
         claims = get_jwt()
         
         # Check if the 'is_admin' claim exists
-        is_admin = False
-        if 'is_admin' in claims:
-            is_admin = claims['is_admin']
-        
-        print(f"Is admin from JWT: {is_admin}")
+        is_admin = claims.get('is_admin', False)
         
         # Only allow admins to delete contributions
         if not is_admin:
