@@ -1,0 +1,4 @@
+/server/
+Pipfile
+Pipfile.lock
+*.py
