@@ -26,6 +26,11 @@ Whether you're managing a community group, non-profit organization, or club, Gro
 - JWT for authentication
 - RESTful API architecture
 
+
+This repository contains:
+- `client/`: React frontend application (deployed to Netlify)
+- `server/`: Flask backend API (deployed separately)
+
 ## 🚀 Getting Started
 
 ### Prerequisites
