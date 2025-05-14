@@ -14,3 +14,6 @@ flask-jwt-extended = "==4.4.4"
 
 [requires]
 python_version = "3.10"
+
+[scripts]
+start = "gunicorn app:app"
