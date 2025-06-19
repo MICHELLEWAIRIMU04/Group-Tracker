@@ -56,7 +56,7 @@ This repository contains:
    # Or using pip with virtualenv
    python -m venv venv
    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   pip install -r requirements.txt
+   
    ```
 
 3. Set up the database
