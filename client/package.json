@@ -20,8 +20,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "netlify:deploy": "netlify deploy --prod"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -43,6 +42,5 @@
   },
   "devDependencies": {
     "netlify-cli": "^15.11.0"
-  },
-  "proxy": "http://localhost:5000"
+  }
 }

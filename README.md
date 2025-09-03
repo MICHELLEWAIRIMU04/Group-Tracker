@@ -26,6 +26,11 @@ Whether you're managing a community group, non-profit organization, or club, Gro
 - JWT for authentication
 - RESTful API architecture
 
+
+This repository contains:
+- `client/`: React frontend application (deployed to Netlify)
+- `server/`: Flask backend API (deployed separately)
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -51,7 +56,7 @@ Whether you're managing a community group, non-profit organization, or club, Gro
    # Or using pip with virtualenv
    python -m venv venv
    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   pip install -r requirements.txt
+   
    ```
 
 3. Set up the database
